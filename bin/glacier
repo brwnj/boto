@@ -35,6 +35,7 @@ import sys
 from boto.glacier import connect_to_region
 from getopt import getopt, GetoptError
 from os.path import isfile, basename
+from time import strftime
 
 
 COMMANDS = ('vaults', 'jobs', 'upload')
@@ -60,11 +61,13 @@ glacier <command> [args]
         --region     - AWS region to use. Possible values: us-east-1, us-west-1,
                        us-west-2, ap-northeast-1, eu-west-1.
                        Default: us-east-1
+        --part_size  - The part size in MB for a multipart upload.
+                       Default: 100
 
     Vaults operations:
 
         List vaults:
-            glacier vaults 
+            glacier vaults
 
     Jobs operations:
 
@@ -75,7 +78,7 @@ glacier <command> [args]
 
         glacier upload <vault name> <files>
 
-        Examples : 
+        Examples :
             glacier upload pics *.jpg
             glacier upload pics a.jpg b.jpg
 """)
@@ -102,30 +105,34 @@ def list_vaults(region, access_key=None, secret_key=None):
 
 def list_jobs(vault_name, region, access_key=None, secret_key=None):
     layer2 = connect(region, access_key = access_key, secret_key = secret_key)
+    # prints a dict?
     print(layer2.layer1.list_jobs(vault_name))
 
 
-def upload_files(vault_name, filenames, region, access_key=None, secret_key=None):
+def upload_files(vault_name, filenames, region, access_key=None,
+                 secret_key=None, part_size=104857600):
     layer2 = connect(region, access_key = access_key, secret_key = secret_key)
-    layer2.create_vault(vault_name)
     glacier_vault = layer2.get_vault(vault_name)
     for filename in filenames:
         if isfile(filename):
-            print('Uploading %s to %s' % (filename, vault_name))
-            glacier_vault.upload_archive(filename, description = basename(filename))
+            print('Uploading', filename, 'to', vault_name)
+            archive_desc = '{}, uploaded at {}'.format(filename,
+                strftime('%Y-%m-%d'))
+            glacier_vault.concurrent_create_archive_from_file(filename,
+                archive_desc, part_size=part_size)
 
 
 def main():
     if len(sys.argv) < 2:
         usage()
-    
+
     command = sys.argv[1]
     if command not in COMMANDS:
         usage()
 
     argv = sys.argv[2:]
-    options = 'a:s:r:'
-    long_options = ['access_key=', 'secret_key=', 'region=']
+    options = 'a:s:r:p:'
+    long_options = ['access_key=', 'secret_key=', 'region=', 'part_size=']
     try:
         opts, args = getopt(argv, options, long_options)
     except GetoptError as e:
@@ -134,6 +141,7 @@ def main():
     # Parse agument
     access_key = secret_key = None
     region = 'us-east-1'
+    part_size = 104857600
     for option, value in opts:
         if option in ('-a', '--access_key'):
             access_key = value
@@ -141,6 +149,8 @@ def main():
             secret_key = value
         elif option in ('-r', '--region'):
             region = value
+        elif option in ('-p', '--part_size'):
+            part_size = int(value) * 1024 * 1024
     # handle each command
     if command == 'vaults':
         list_vaults(region, access_key, secret_key)
@@ -151,7 +161,8 @@ def main():
     elif command == 'upload':
         if len(args) < 2:
             usage()
-        upload_files(args[0], args[1:], region, access_key, secret_key)
+        upload_files(args[0], args[1:], region, access_key, secret_key,
+            part_size)
 
 
 if __name__ == '__main__':
