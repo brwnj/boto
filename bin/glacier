@@ -34,7 +34,7 @@ import sys
 
 from boto.glacier import connect_to_region
 from getopt import getopt, GetoptError
-from os.path import isfile, basename
+from os.path import isfile
 from time import strftime
 
 
@@ -48,14 +48,14 @@ glacier <command> [args]
     Commands
         vaults    - Operations with vaults
         jobs      - Operations with jobs
-        upload    - Upload files to a vault. If the vault doesn't exits, it is
+        upload    - Upload files to a vault. If the vault doesn't exist, it is
                     created
 
     Common args:
-        --access_key - Your AWS Access Key ID.  If not supplied, boto will
+        --access_key - Your AWS Access Key ID. If not supplied, boto will
                        use the value of the environment variable
                        AWS_ACCESS_KEY_ID
-        --secret_key - Your AWS Secret Access Key.  If not supplied, boto
+        --secret_key - Your AWS Secret Access Key. If not supplied, boto
                        will use the value of the environment variable
                        AWS_SECRET_ACCESS_KEY
         --region     - AWS region to use. Possible values: us-east-1, us-west-1,
